@@ -4,6 +4,11 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 
 public class Cliente {
 
@@ -57,7 +62,10 @@ public class Cliente {
 
     // Metodo para listar los videojuegos de una empresa
     public static void listarVideojocsPorEmpresa(String empresa) throws IOException {
-        String endpoint = BASE_URL + "/videojocs?empresa=" + empresa;
+        // Encode the company name to handle spaces and special characters
+        String encodedEmpresa = URLEncoder.encode(empresa, StandardCharsets.UTF_8.toString());
+
+        String endpoint = BASE_URL + "/videojocs?empresa=" + encodedEmpresa;
         HttpURLConnection connection = (HttpURLConnection) new URL(endpoint).openConnection();
         connection.setRequestMethod("GET");
         int responseCode = connection.getResponseCode();
@@ -70,8 +78,24 @@ public class Cliente {
                 response.append(line);
             }
             reader.close();
+
+            // Parsear la respuesta JSON
+            JSONArray videojuegos = new JSONArray(response.toString());
+            JSONArray videojuegosEmpresa = new JSONArray();
+
+            // Filtrar los videojuegos de la empresa especificada
+            for (int i = 0; i < videojuegos.length(); i++) {
+                JSONObject videojuego = videojuegos.getJSONObject(i);
+                if (videojuego.getString("EMPRESA").equalsIgnoreCase(empresa)) {
+                    videojuegosEmpresa.put(videojuego);
+                }
+            }
+
             System.out.println("Videojuegos de la empresa " + empresa + ":");
-            System.out.println(response.toString());
+            // Imprimir solo los videojuegos filtrados
+            for (int i = 0; i < videojuegosEmpresa.length(); i++) {
+                System.out.println(videojuegosEmpresa.getJSONObject(i).toString());
+            }
         } else {
             System.out.println("Error al obtener los videojuegos de la empresa " + empresa + ". Código de respuesta: " + responseCode);
         }
@@ -185,7 +209,7 @@ public class Cliente {
         connection.setRequestMethod("DELETE");
 
         int responseCode = connection.getResponseCode();
-        if (responseCode == HttpURLConnection.HTTP_OK) {
+        if (responseCode == HttpURLConnection.HTTP_OK || responseCode == HttpURLConnection.HTTP_NO_CONTENT) {
             System.out.println("Videojuego con ID " + id + " eliminado con éxito.");
         } else {
             System.out.println("Error al eliminar el videojuego con ID " + id + ". Código de respuesta: " + responseCode);
